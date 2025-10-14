@@ -1,0 +1,11 @@
+{
+  "battery_server": {"host": "127.0.0.1", "port": 5020, "unit_id": 1},
+  "master_server": {"host": "127.0.0.1", "port": 502, "unit_id": 1},
+  "initial_registers": {
+    "unit_id": 1,
+    "holding": {"40001": 1, "40002": 0, "40010": 1234},
+    "input": {"30001": 3700, "30002": 251},
+    "coils": {"00001": 1, "00002": 0},
+    "discrete": {"10001": 1, "10002": 0}
+  }
+}

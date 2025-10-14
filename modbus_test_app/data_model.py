@@ -1,14 +1,47 @@
 """Data model and datastore helpers for Modbus servers."""
 from __future__ import annotations
 
+import pkgutil
 from dataclasses import dataclass
-from typing import Dict, Iterable, Mapping
+from functools import lru_cache
+from importlib import import_module
+from typing import Dict, Iterable, Mapping, Type, cast
 
-from pymodbus.datastore import (
-    ModbusServerContext,
-    ModbusSequentialDataBlock,
-    ModbusSlaveContext,
-)
+
+def _load_datastore_class(name: str) -> Type[object]:
+    """Return a datastore class regardless of the pymodbus version."""
+
+    base_module = import_module("pymodbus.datastore")
+    attr = getattr(base_module, name, None)
+    if isinstance(attr, type):
+        return attr
+
+    module_path = getattr(base_module, "__path__", None)
+    if module_path is None:
+        raise ImportError(f"Unable to import '{name}' from pymodbus.datastore")
+
+    for _, module_name, _ in pkgutil.walk_packages(module_path, base_module.__name__ + "."):
+        try:
+            module = import_module(module_name)
+        except Exception:  # pragma: no cover - defensive: skip broken modules
+            continue
+        attr = getattr(module, name, None)
+        if isinstance(attr, type):
+            return attr
+
+    raise ImportError(f"Unable to import '{name}' from pymodbus.datastore")
+
+
+@lru_cache(maxsize=None)
+def _datastore_class(name: str) -> Type[object]:
+    """Cache loader for pymodbus datastore classes."""
+
+    return _load_datastore_class(name)
+
+
+ModbusServerContext = cast(Type[object], _datastore_class("ModbusServerContext"))
+ModbusSequentialDataBlock = cast(Type[object], _datastore_class("ModbusSequentialDataBlock"))
+ModbusSlaveContext = cast(Type[object], _datastore_class("ModbusSlaveContext"))
 
 REGISTER_BASES: Dict[str, int] = {
     "holding": 40001,

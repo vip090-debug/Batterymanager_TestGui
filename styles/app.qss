@@ -1,0 +1,116 @@
+QMainWindow {
+    background-color: #d8dce7;  /* Light color for the main window */
+}
+QGroupBox {
+    background-color: #d8dce7;  /* Apply a slightly different background for group boxes */
+    border: 1px solid #c0c4ce;
+    margin-top: 10px;  /* Add some spacing for visual appeal */
+    padding: 10px;
+}
+QTabWidget::pane {  /* The pane color around the tab widget */
+    background: #e0e4ec;  /* Slightly darker than the window background */
+    border: 1px solid #c0c4ce;  /* Subtle border for the pane */
+}
+QWidget {
+    background-color: #d8dce7;  /* Your desired background color */
+}
+QTabBar::tab {  /* The tabs in the tab widget */
+    background: #d8dce7;  /* Match the main window background for selected tab */
+    color: #204783;  /* Text color */
+    padding: 8px 40px;  /* Increase left and right padding */
+    margin-right: 2px;  /* Small space between tabs */
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    font-size: 10px;  /* Set the font size */
+}
+QTabBar::tab:selected {  /* Style for the selected tab */
+    background: #f0f3f9;  /* Even lighter for the tabs themselves */
+    color: #204783;  /* Keep text color consistent */
+    padding: 8px 40px;  /* Increase left and right padding */
+    margin-right: 2px;  /* Small space between tabs */
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    font-size: 11px;
+}
+QTabBar::tab:hover {  /* Hover effect for tabs */
+    background: #c8ccd7;  /* Slightly darker on hover */
+}
+QPushButton {
+    background-color: #204783;  /* Blue color */
+    color: white;
+    border: none;
+    padding: 10px;
+    font-size: 12px;
+    min-width: 80px;
+    min-height: 10px;
+}
+QPushButton:hover {
+    background-color: #ca2a2a;  /* Red color */
+}
+QScrollArea {
+    background-color: #d8dce7;  /* Set the background color for the scroll area */
+}
+QGroupBox {
+background-color: #d8dce7;  /* Apply a slightly different background for group boxes */
+border: 1px solid #c0c4ce;
+margin-top: 10px;  /* Add some spacing for visual appeal */
+padding: 10px;
+}
+QLineEdit {
+    background-color: #d8dce7;  /* Apply background color for text inputs */
+    border: 1px solid #c0c4ce;
+    padding: 5px;
+    font-size: 12px;
+}
+QTableWidget {
+    background-color: #f0f3f9;  /* Set background color for the table */
+    border: 1px solid #c0c4ce;  /* Border for the table */
+    gridline-color: #c0c4ce;  /* Set gridline color */
+}
+QScrollArea {
+    background-color: #d8dce7;  /* Set the background color for scroll area */
+}
+QTableWidget::item {
+    background-color: #f0f3f9;  /* Ensure that each cell also has the background */
+}
+QHeaderView::section {
+    background-color: #d8dce7;  /* Header background color */
+    color: #204783;  /* Header text color */
+    border: 1px solid #c0c4ce;  /* Border for header sections */
+    padding: 5px;
+}
+QTableCornerButton::section {
+    background-color: #d8dce7;  /* Background color for the top-left corner */
+}
+ /* QComboBox Styling with rounded corners */
+QComboBox {
+    background-color: #f0f3f9; /* Background of dropdown */
+    border: 1px solid #c0c4ce; /* Border color */
+    border-radius: 3px;  /* Rounded corners */
+    padding: 5px;  /* Padding inside the dropdown */
+}
+
+/* Arrow inside the QComboBox */
+QComboBox::drop-down {
+    border-left: 1px solid #c0c4ce;
+    border-top-right-radius: 3px;
+    border-bottom-right-radius: 3px;
+    width: 15px;
+    background-color: #204783; /* Customize the color of the dropdown arrow */
+}
+QSplitter::handle {
+    background: #888;
+    border: 1px solid #555;
+    min-height: 12px;  /* für vertikal */
+    min-width: 8px;    /* für horizontal */
+    border-radius: 2px;
+}
+QSplitter::handle:hover {
+    background: #444;
+}
+QSplitter::handle:vertical {
+    image: url(:/icons/grip-v.png);
+}
+QSplitter::handle:horizontal {
+    image: url(:/icons/grip-h.png);
+}

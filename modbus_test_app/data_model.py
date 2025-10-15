@@ -5,44 +5,61 @@ import pkgutil
 from dataclasses import dataclass
 from functools import lru_cache
 from importlib import import_module
-from typing import Dict, Iterable, Mapping, Type, cast
+from typing import Dict, Iterable, Mapping, Sequence, Type, cast
 
 
 CLASS_ALIASES = {
     "ModbusSlaveContext": ("ModbusDeviceContext",),
 }
 
+KNOWN_SUBMODULES: Sequence[str] = (
+    "pymodbus.datastore.context",
+    "pymodbus.datastore.sequential",
+    "pymodbus.datastore.sparse",
+    "pymodbus.datastore.simulator",
+    "pymodbus.datastore.store",
+)
+
+
+def _resolve_from_module(module: object, name: str) -> Type[object] | None:
+    """Return a datastore class from ``module`` if present."""
+
+    for candidate in (name, *CLASS_ALIASES.get(name, ())):
+        attr = getattr(module, candidate, None)
+        if isinstance(attr, type):
+            return attr
+    return None
+
 
 def _load_datastore_class(name: str) -> Type[object]:
     """Return a datastore class regardless of the pymodbus version."""
 
     base_module = import_module("pymodbus.datastore")
-    attr = getattr(base_module, name, None)
-    if isinstance(attr, type):
-        return attr
+    resolved = _resolve_from_module(base_module, name)
+    if resolved is not None:
+        return resolved
 
-    for alias in CLASS_ALIASES.get(name, ()):  # pragma: no branch - short tuples
-        alias_attr = getattr(base_module, alias, None)
-        if isinstance(alias_attr, type):
-            return alias_attr
-
-    module_path = getattr(base_module, "__path__", None)
-    if module_path is None:
-        raise ImportError(f"Unable to import '{name}' from pymodbus.datastore")
-
-    for _, module_name, _ in pkgutil.walk_packages(module_path, base_module.__name__ + "."):
+    for module_name in KNOWN_SUBMODULES:
         try:
             module = import_module(module_name)
         except Exception:  # pragma: no cover - defensive: skip broken modules
             continue
-        attr = getattr(module, name, None)
-        if isinstance(attr, type):
-            return attr
+        resolved = _resolve_from_module(module, name)
+        if resolved is not None:
+            return resolved
 
-        for alias in CLASS_ALIASES.get(name, ()):  # pragma: no branch - short tuples
-            alias_attr = getattr(module, alias, None)
-            if isinstance(alias_attr, type):
-                return alias_attr
+    module_path = getattr(base_module, "__path__", None)
+    if module_path is not None:
+        for _, module_name, _ in pkgutil.walk_packages(
+            module_path, base_module.__name__ + "."
+        ):
+            try:
+                module = import_module(module_name)
+            except Exception:  # pragma: no cover - defensive: skip broken modules
+                continue
+            resolved = _resolve_from_module(module, name)
+            if resolved is not None:
+                return resolved
 
     raise ImportError(f"Unable to import '{name}' from pymodbus.datastore")
 

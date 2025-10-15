@@ -9,7 +9,15 @@ from typing import Mapping, Optional
 from copy import deepcopy
 
 from pymodbus.exceptions import ModbusException
-from pymodbus.server.async_io import AsyncModbusTcpServer
+
+try:  # pymodbus < 3.5
+    from pymodbus.server.async_io import AsyncModbusTcpServer  # type: ignore
+
+    _ASYNC_SERVER_USES_START_STOP = True
+except ModuleNotFoundError:  # pymodbus >= 3.5
+    from pymodbus.server import ModbusTcpServer as AsyncModbusTcpServer
+
+    _ASYNC_SERVER_USES_START_STOP = False
 
 from .data_model import build_datastore
 
@@ -94,12 +102,17 @@ class BaseServer:
     async def _start_async(self) -> None:
         try:
             context = build_datastore(self._state.initials, self._state.unit_id)
-            self._server = AsyncModbusTcpServer(
+            server_kwargs = dict(
                 context=context,
                 address=(self._state.host, self._state.port),
-                allow_reuse_address=True,
             )
-            await self._server.start()
+            if _ASYNC_SERVER_USES_START_STOP:
+                server_kwargs["allow_reuse_address"] = True
+            self._server = AsyncModbusTcpServer(**server_kwargs)
+            if _ASYNC_SERVER_USES_START_STOP:
+                await self._server.start()
+            else:
+                await self._server.serve_forever(background=True)
             LOGGER.info("%s started on %s:%s", self.name, self._state.host, self._state.port)
             self._running.set()
             self._startup_event.set()
@@ -128,7 +141,10 @@ class BaseServer:
             self._startup_event.set()
         finally:
             if self._server:
-                await self._server.stop()
+                if _ASYNC_SERVER_USES_START_STOP:
+                    await self._server.stop()
+                else:
+                    await self._server.shutdown()
             self._running.clear()
             if self._shutdown_event:
                 self._shutdown_event.clear()

@@ -1,6 +1,7 @@
 """Data model and datastore helpers for Modbus servers."""
 from __future__ import annotations
 
+import inspect
 import pkgutil
 from dataclasses import dataclass
 from functools import lru_cache
@@ -75,6 +76,9 @@ ModbusServerContext = cast(Type[object], _datastore_class("ModbusServerContext")
 ModbusSequentialDataBlock = cast(Type[object], _datastore_class("ModbusSequentialDataBlock"))
 ModbusSlaveContext = cast(Type[object], _datastore_class("ModbusSlaveContext"))
 
+_SLAVE_SUPPORTS_ZERO_MODE = "zero_mode" in inspect.signature(ModbusSlaveContext.__init__).parameters
+_SERVER_CONTEXT_USES_SLAVES = "slaves" in inspect.signature(ModbusServerContext.__init__).parameters
+
 REGISTER_BASES: Dict[str, int] = {
     "holding": 40001,
     "input": 30001,
@@ -122,14 +126,21 @@ def build_datastore(initials: Mapping[str, Mapping[str, int]], unit_id: int) -> 
     coil_block = RegisterInitialisation("coils", initials.get("coils", {})).to_block()
     discrete_block = RegisterInitialisation("discrete", initials.get("discrete", {})).to_block()
 
-    slave_context = ModbusSlaveContext(
+    slave_kwargs = dict(
         di=discrete_block,
         co=coil_block,
         hr=holding_block,
         ir=input_block,
-        zero_mode=True,
     )
-    return ModbusServerContext(slaves={unit_id: slave_context}, single=False)
+    if _SLAVE_SUPPORTS_ZERO_MODE:
+        slave_kwargs["zero_mode"] = True
+    slave_context = ModbusSlaveContext(**slave_kwargs)
+    context_kwargs = dict(single=False)
+    if _SERVER_CONTEXT_USES_SLAVES:
+        context_kwargs["slaves"] = {unit_id: slave_context}
+    else:
+        context_kwargs["devices"] = {unit_id: slave_context}
+    return ModbusServerContext(**context_kwargs)
 
 
 def iter_addresses(register_type: str, addresses: Iterable[int]) -> Iterable[int]:

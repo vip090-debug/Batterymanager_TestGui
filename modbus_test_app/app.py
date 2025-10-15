@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import queue
 import sys
+from pathlib import Path
 from copy import deepcopy
 from typing import Dict, Mapping
 
@@ -15,6 +16,19 @@ from .logging_setup import LOG_FORMAT, setup_logging, update_log_level
 from .servers import BaseServer, ServerManager, ServerState
 
 LOGGER = logging.getLogger(__name__)
+STYLE_PATH = Path(__file__).resolve().parent.parent / "styles" / "app.qss"
+
+
+def _load_stylesheet() -> str:
+    """Return the application stylesheet if available."""
+
+    try:
+        return STYLE_PATH.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        LOGGER.warning("Stylesheet not found at %s", STYLE_PATH)
+    except OSError as exc:
+        LOGGER.warning("Failed to read stylesheet %s: %s", STYLE_PATH, exc)
+    return ""
 
 REGISTER_TYPES = ["holding", "input", "coils", "discrete"]
 
@@ -483,6 +497,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
 def main() -> None:
     app = QtWidgets.QApplication(sys.argv)
+    stylesheet = _load_stylesheet()
+    if stylesheet:
+        app.setStyleSheet(stylesheet)
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())

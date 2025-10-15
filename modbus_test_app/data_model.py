@@ -8,6 +8,11 @@ from importlib import import_module
 from typing import Dict, Iterable, Mapping, Type, cast
 
 
+CLASS_ALIASES = {
+    "ModbusSlaveContext": ("ModbusDeviceContext",),
+}
+
+
 def _load_datastore_class(name: str) -> Type[object]:
     """Return a datastore class regardless of the pymodbus version."""
 
@@ -15,6 +20,11 @@ def _load_datastore_class(name: str) -> Type[object]:
     attr = getattr(base_module, name, None)
     if isinstance(attr, type):
         return attr
+
+    for alias in CLASS_ALIASES.get(name, ()):  # pragma: no branch - short tuples
+        alias_attr = getattr(base_module, alias, None)
+        if isinstance(alias_attr, type):
+            return alias_attr
 
     module_path = getattr(base_module, "__path__", None)
     if module_path is None:
@@ -28,6 +38,11 @@ def _load_datastore_class(name: str) -> Type[object]:
         attr = getattr(module, name, None)
         if isinstance(attr, type):
             return attr
+
+        for alias in CLASS_ALIASES.get(name, ()):  # pragma: no branch - short tuples
+            alias_attr = getattr(module, alias, None)
+            if isinstance(alias_attr, type):
+                return alias_attr
 
     raise ImportError(f"Unable to import '{name}' from pymodbus.datastore")
 

@@ -41,7 +41,7 @@ def read_registers(
         raise ValueError("Count must be at least 1")
     offset = human_to_offset(register_type, address)
     if offset < 0:
-        raise ValueError("Address must be greater or equal to the base address")
+        raise ValueError("Address must be a non-negative integer")
 
     client = _connect_client(host, port)
     try:
@@ -81,7 +81,7 @@ def write_register(
         raise ValueError(f"Register type '{register_type}' does not support write operations")
     offset = human_to_offset(register_type, address)
     if offset < 0:
-        raise ValueError("Address must be greater or equal to the base address")
+        raise ValueError("Address must be a non-negative integer")
 
     client = _connect_client(host, port)
     try:

@@ -110,13 +110,27 @@ class RegisterInitialisation:
 
 
 def _human_to_offset(register_type: str, address: str | int) -> int:
-    """Convert a human readable address into a zero based offset."""
+    """Convert a human readable address into a zero based offset.
+
+    The UI and client helpers accept both the traditional Modbus register
+    numbers (e.g. ``40001``) and zero-based offsets (e.g. ``0``).  pymodbus
+    always expects offsets, therefore we map any non-negative value below the
+    human-readable base directly to its offset representation.
+    """
+
     base = REGISTER_BASES[register_type]
     if isinstance(address, str):
-        address_int = int(address)
+        address_int = int(address, 0)
     else:
-        address_int = address
-    return address_int - base
+        address_int = int(address)
+
+    offset = address_int - base
+    if offset >= 0:
+        return offset
+    if address_int >= 0:
+        # ``address`` was already provided as an offset.
+        return address_int
+    return offset
 
 
 def build_datastore(initials: Mapping[str, Mapping[str, int]], unit_id: int) -> ModbusServerContext:

@@ -59,19 +59,19 @@ def read_registers(
     try:
         if register_type == "holding":
             response = _call_with_unit_support(
-                client.read_holding_registers, offset, count, unit_id=unit_id
+                client.read_holding_registers, offset, count=count, unit_id=unit_id
             )
         elif register_type == "input":
             response = _call_with_unit_support(
-                client.read_input_registers, offset, count, unit_id=unit_id
+                client.read_input_registers, offset, count=count, unit_id=unit_id
             )
         elif register_type == "coils":
             response = _call_with_unit_support(
-                client.read_coils, offset, count, unit_id=unit_id
+                client.read_coils, offset, count=count, unit_id=unit_id
             )
         else:
             response = _call_with_unit_support(
-                client.read_discrete_inputs, offset, count, unit_id=unit_id
+                client.read_discrete_inputs, offset, count=count, unit_id=unit_id
             )
 
         if response.isError():

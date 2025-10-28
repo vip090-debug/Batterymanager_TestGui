@@ -137,9 +137,17 @@ class RegisterInitialisation:
     def to_block(self) -> ModbusSequentialDataBlock:
         """Convert stored values into a sequential data block."""
         offsets = [_human_to_offset(self.register_type, address) for address in self.values]
+
+        # Provide a sufficiently large default range so clients can access
+        # registers even if they are not explicitly initialised in the
+        # configuration.  The requested range spans addresses 0x0000–0x9000,
+        # therefore the data block must contain 0x9000 + 1 entries.
+        minimum_size = 0x9000 + 1
+
         if not offsets:
-            return ModbusSequentialDataBlock(0, [0])
-        size = max(offsets) + 1
+            return ModbusSequentialDataBlock(0, [0] * minimum_size)
+
+        size = max(max(offsets) + 1, minimum_size)
         data = [0] * size
         for address, value in self.values.items():
             offset = _human_to_offset(self.register_type, address)

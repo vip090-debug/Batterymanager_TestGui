@@ -1,6 +1,7 @@
 """Client helper functions performing Modbus read/write operations."""
 from __future__ import annotations
 
+from inspect import signature
 from typing import List, Sequence
 
 from pymodbus.client import ModbusTcpClient
@@ -22,6 +23,17 @@ def _connect_client(host: str, port: int) -> ModbusTcpClient:
         client.close()
         raise ClientError(f"Unable to connect to Modbus server at {host}:{port}")
     return client
+
+
+def _call_with_unit_support(fn, *args, unit_id: int, **kwargs):
+    """Invoke *fn* using the parameter supported by the pymodbus version."""
+
+    params = signature(fn).parameters
+    if "slave" in params:
+        return fn(*args, slave=unit_id, **kwargs)
+    if "unit" in params:
+        return fn(*args, unit=unit_id, **kwargs)
+    return fn(*args, **kwargs)
 
 
 def read_registers(
@@ -46,13 +58,21 @@ def read_registers(
     client = _connect_client(host, port)
     try:
         if register_type == "holding":
-            response = client.read_holding_registers(offset, count, unit=unit_id)
+            response = _call_with_unit_support(
+                client.read_holding_registers, offset, count, unit_id=unit_id
+            )
         elif register_type == "input":
-            response = client.read_input_registers(offset, count, unit=unit_id)
+            response = _call_with_unit_support(
+                client.read_input_registers, offset, count, unit_id=unit_id
+            )
         elif register_type == "coils":
-            response = client.read_coils(offset, count, unit=unit_id)
+            response = _call_with_unit_support(
+                client.read_coils, offset, count, unit_id=unit_id
+            )
         else:
-            response = client.read_discrete_inputs(offset, count, unit=unit_id)
+            response = _call_with_unit_support(
+                client.read_discrete_inputs, offset, count, unit_id=unit_id
+            )
 
         if response.isError():
             raise ClientError(str(response))
@@ -89,20 +109,32 @@ def write_register(
             if isinstance(value, Sequence) and not isinstance(value, (bytes, bytearray, str)):
                 values = [int(v) for v in value]
                 if len(values) == 1:
-                    response = client.write_register(offset, values[0], unit=unit_id)
+                    response = _call_with_unit_support(
+                        client.write_register, offset, values[0], unit_id=unit_id
+                    )
                 else:
-                    response = client.write_registers(offset, values, unit=unit_id)
+                    response = _call_with_unit_support(
+                        client.write_registers, offset, values, unit_id=unit_id
+                    )
             else:
-                response = client.write_register(offset, int(value), unit=unit_id)
+                response = _call_with_unit_support(
+                    client.write_register, offset, int(value), unit_id=unit_id
+                )
         else:  # coils
             if isinstance(value, Sequence) and not isinstance(value, (bytes, bytearray, str)):
                 bools = [bool(v) for v in value]
                 if len(bools) == 1:
-                    response = client.write_coil(offset, bools[0], unit=unit_id)
+                    response = _call_with_unit_support(
+                        client.write_coil, offset, bools[0], unit_id=unit_id
+                    )
                 else:
-                    response = client.write_coils(offset, bools, unit=unit_id)
+                    response = _call_with_unit_support(
+                        client.write_coils, offset, bools, unit_id=unit_id
+                    )
             else:
-                response = client.write_coil(offset, bool(value), unit=unit_id)
+                response = _call_with_unit_support(
+                    client.write_coil, offset, bool(value), unit_id=unit_id
+                )
 
         if response.isError():
             raise ClientError(str(response))

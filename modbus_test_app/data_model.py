@@ -160,7 +160,11 @@ def _human_to_offset(register_type: str, address: str | int) -> int:
 
     base = REGISTER_BASES[register_type]
     if isinstance(address, str):
-        address_int = int(address, 0)
+        text = address.strip()
+        if text.isdigit() or (text.startswith("-") and text[1:].isdigit()):
+            address_int = int(text, 10)
+        else:
+            address_int = int(text, 0)
     else:
         address_int = int(address)
 

@@ -9,6 +9,7 @@ from typing import Mapping, Optional
 from copy import deepcopy
 
 from pymodbus.exceptions import ModbusException
+from pymodbus.server.requesthandler import ServerRequestHandler
 
 try:  # pymodbus < 3.5
     from pymodbus.server.async_io import AsyncModbusTcpServer  # type: ignore
@@ -22,6 +23,74 @@ except ModuleNotFoundError:  # pymodbus >= 3.5
 from .data_model import build_datastore
 
 LOGGER = logging.getLogger(__name__)
+REQUEST_LOGGER = LOGGER.getChild("requests")
+
+
+class LoggingServerRequestHandler(ServerRequestHandler):
+    """Request handler that logs incoming Modbus requests."""
+
+    def __init__(
+        self,
+        owner,
+        trace_packet,
+        trace_pdu,
+        trace_connect,
+        *,
+        request_logger: logging.Logger,
+        server_label: str,
+    ) -> None:
+        self._request_logger = request_logger
+        self._server_label = server_label
+        super().__init__(owner, trace_packet, trace_pdu, trace_connect)
+
+    async def handle_request(self) -> None:  # type: ignore[override]
+        if self.last_pdu and self._request_logger.isEnabledFor(logging.INFO):
+            peer = self._resolve_peer()
+            function_code = getattr(self.last_pdu, "function_code", None)
+            unit_id = getattr(self.last_pdu, "dev_id", None)
+            function_display = (
+                f"0x{function_code:02X}" if isinstance(function_code, int) else str(function_code)
+            )
+            unit_display = unit_id if unit_id is not None else "unbekannt"
+            self._request_logger.info(
+                "%s: Modbus-Anfrage von %s – Unit-ID %s, Funktion %s",
+                self._server_label,
+                peer,
+                unit_display,
+                function_display,
+            )
+        await super().handle_request()
+
+    def _resolve_peer(self) -> str:
+        if not self.transport:
+            return "unbekannter Client"
+        peer = self.transport.get_extra_info("peername")
+        if isinstance(peer, (list, tuple)) and peer:
+            host = peer[0]
+            port = peer[1] if len(peer) > 1 else "?"
+            return f"{host}:{port}"
+        if peer:
+            return str(peer)
+        return "unbekannter Client"
+
+
+class LoggingAsyncModbusTcpServer(AsyncModbusTcpServer):
+    """Async Modbus server that emits log messages for each request."""
+
+    def __init__(self, *args, request_logger: logging.Logger, server_label: str, **kwargs) -> None:
+        self._request_logger = request_logger
+        self._server_label = server_label
+        super().__init__(*args, **kwargs)
+
+    def callback_new_connection(self):  # type: ignore[override]
+        return LoggingServerRequestHandler(
+            self,
+            self.trace_packet,
+            self.trace_pdu,
+            self.trace_connect,
+            request_logger=self._request_logger,
+            server_label=self._server_label,
+        )
 
 
 @dataclass
@@ -108,7 +177,9 @@ class BaseServer:
             )
             if _ASYNC_SERVER_USES_START_STOP:
                 server_kwargs["allow_reuse_address"] = True
-            self._server = AsyncModbusTcpServer(**server_kwargs)
+            server_kwargs["request_logger"] = REQUEST_LOGGER
+            server_kwargs["server_label"] = self.name
+            self._server = LoggingAsyncModbusTcpServer(**server_kwargs)
             if _ASYNC_SERVER_USES_START_STOP:
                 await self._server.start()
             else:

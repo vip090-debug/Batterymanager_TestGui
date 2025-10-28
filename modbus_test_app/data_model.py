@@ -4,6 +4,7 @@ from __future__ import annotations
 import inspect
 import pkgutil
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 from importlib import import_module
 from typing import Dict, Iterable, Mapping, Sequence, Type, cast
@@ -87,12 +88,51 @@ REGISTER_BASES: Dict[str, int] = {
 }
 
 
+def parse_register_value(value: object) -> int:
+    """Convert *value* into an integer understood by Modbus registers.
+
+    The configuration files may contain numbers written with the German
+    decimal comma (e.g. ``"0,000"``).  Python's :func:`int` does not accept
+    this representation, therefore we normalise such inputs before converting
+    them.  Values that still contain a fractional component after normalisation
+    are rejected to avoid silently truncating data.
+    """
+
+    if isinstance(value, bool):  # bool is a subclass of int but be explicit
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        if not value.is_integer():
+            raise ValueError(f"Registerwerte müssen ganze Zahlen sein: {value}")
+        return int(value)
+
+    text = str(value).strip()
+    if not text:
+        raise ValueError("Leerer Registerwert ist ungültig.")
+
+    try:
+        return int(text, 0)
+    except ValueError:
+        normalised = text
+        if "," in normalised:
+            # Support German decimal comma as well as thousand separators.
+            normalised = normalised.replace(".", "").replace(",", ".")
+        try:
+            decimal_value = Decimal(normalised)
+        except InvalidOperation as exc:
+            raise ValueError(f"Ungültiger Registerwert: {value}") from exc
+        if decimal_value != decimal_value.to_integral_value():
+            raise ValueError(f"Registerwerte müssen ganze Zahlen sein: {value}")
+        return int(decimal_value)
+
+
 @dataclass
 class RegisterInitialisation:
     """Container describing initial values for a register type."""
 
     register_type: str
-    values: Mapping[str, int]
+    values: Mapping[str, int | float | str]
 
     def to_block(self) -> ModbusSequentialDataBlock:
         """Convert stored values into a sequential data block."""
@@ -105,7 +145,7 @@ class RegisterInitialisation:
             offset = _human_to_offset(self.register_type, address)
             if offset < 0:
                 continue
-            data[offset] = int(value)
+            data[offset] = parse_register_value(value)
         return ModbusSequentialDataBlock(0, data)
 
 
@@ -175,4 +215,5 @@ __all__ = [
     "build_datastore",
     "human_to_offset",
     "iter_addresses",
+    "parse_register_value",
 ]

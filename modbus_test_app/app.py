@@ -12,6 +12,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 from .client import read_registers, write_register
 from .config import ConfigManager
+from .data_model import parse_register_value
 from .logging_setup import LOG_FORMAT, setup_logging, update_log_level
 from .servers import BaseServer, ServerManager, ServerState
 
@@ -379,7 +380,10 @@ class ServerTab(QtWidgets.QWidget):
             parts = [part.strip() for part in text.split(",") if part.strip()]
             if not parts:
                 raise ValueError("Bitte gültige Werte eingeben.")
-            ints = [int(part, 0) for part in parts]
+            try:
+                ints = [parse_register_value(part) for part in parts]
+            except ValueError as exc:
+                raise ValueError(str(exc))
             return ints if len(ints) > 1 else ints[0]
 
     def _display_read_result(self, register_type: str, address: int, result) -> None:

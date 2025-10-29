@@ -310,7 +310,7 @@ class ServerTab(QtWidgets.QWidget):
 
     def _handle_read(self) -> None:
         try:
-            address = int(self.address_edit.text())
+            address = self._parse_address()
             count = int(self.count_edit.text())
         except ValueError:
             QtWidgets.QMessageBox.warning(self, "Fehler", "Adresse und Anzahl müssen ganze Zahlen sein.")
@@ -334,7 +334,7 @@ class ServerTab(QtWidgets.QWidget):
     def _handle_write(self) -> None:
         register_type = self.type_combo.currentText()
         try:
-            address = int(self.address_edit.text())
+            address = self._parse_address()
         except ValueError:
             QtWidgets.QMessageBox.warning(self, "Fehler", "Adresse muss eine ganze Zahl sein.")
             return
@@ -357,6 +357,12 @@ class ServerTab(QtWidgets.QWidget):
         worker.signals.result.connect(lambda _: self._display_write_success(register_type, address, values))
         worker.signals.error.connect(self._display_error)
         self.thread_pool.start(worker)
+
+    def _parse_address(self) -> int:
+        text = self.address_edit.text().strip()
+        if not text:
+            raise ValueError("Adresse darf nicht leer sein.")
+        return int(text, 0)
 
     def _parse_values(self, register_type: str, text: str):
         if register_type == "coils":
